@@ -3,6 +3,9 @@ import { useTerminalCommands } from '../hooks/useTerminalCommands';
 import { TerminalHeader } from './TerminalHeader';
 import { BootSequence } from './BootSequence';
 import { MatrixBackground } from './MatrixBackground';
+import { MobileTerminal } from './MobileTerminal';
+import { CommandAutocomplete } from './CommandAutocomplete';
+import { TerminalSounds } from './TerminalSounds';
 
 interface TerminalLine {
   id: string;
@@ -16,6 +19,9 @@ export const TerminalInterface = () => {
   const [lines, setLines] = useState<TerminalLine[]>([]);
   const [isBooting, setIsBooting] = useState(true);
   const [currentPath, setCurrentPath] = useState('~');
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [soundTrigger, setSoundTrigger] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +68,10 @@ export const TerminalInterface = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
+      // Add to command history
+      setCommandHistory(prev => [input.trim(), ...prev.slice(0, 49)]); // Keep last 50 commands
+      setHistoryIndex(-1);
+      
       // Add command to history
       const commandLine: TerminalLine = {
         id: Date.now().toString(),
@@ -75,12 +85,58 @@ export const TerminalInterface = () => {
       // Execute command
       executeCommand(input.trim());
       
+      // Trigger command sound
+      setSoundTrigger(Date.now());
+      
       setInput('');
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (historyIndex < commandHistory.length - 1) {
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setInput(commandHistory[newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setInput(commandHistory[newIndex]);
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setInput('');
+      }
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const availableCommands = getAvailableCommands();
+      const matches = availableCommands.filter(cmd => 
+        cmd.toLowerCase().startsWith(input.toLowerCase())
+      );
+      if (matches.length === 1) {
+        setInput(matches[0]);
+      }
+    }
+  };
+
   const handleQuickCommand = (command: string) => {
-    setInput(command);
+    // Add command to history first
+    const commandLine: TerminalLine = {
+      id: Date.now().toString(),
+      content: command,
+      type: 'command',
+      timestamp: Date.now(),
+    };
+    
+    setLines(prev => [...prev, commandLine]);
+    
+    // Execute command
+    executeCommand(command);
+    
+    // Focus input for next command
     inputRef.current?.focus();
   };
 
@@ -122,18 +178,29 @@ export const TerminalInterface = () => {
               </div>
             ))}
             
-            <form onSubmit={handleSubmit} className="terminal-line">
-              <span className="text-terminal-muted">[{currentPath}]</span>
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="bg-transparent outline-none text-terminal ml-1 flex-1"
-                placeholder="Type a command... (try 'help')"
-                autoFocus
-              />
-              <span className="terminal-cursor">_</span>
+            <form onSubmit={handleSubmit}>
+              <div className="terminal-line flex items-center relative">
+                <span className="text-terminal-muted">[{currentPath}]</span>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="bg-transparent outline-none text-terminal ml-1 flex-1 font-terminal"
+                  placeholder="Type a command... (try 'help')"
+                  autoFocus
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+                <span className="terminal-cursor">_</span>
+                
+                <CommandAutocomplete 
+                  input={input}
+                  onComplete={setInput}
+                  availableCommands={getAvailableCommands()}
+                />
+              </div>
             </form>
           </div>
           
@@ -141,7 +208,7 @@ export const TerminalInterface = () => {
           <div className="p-4 border-t border-border bg-muted/30">
             <div className="text-terminal-muted text-xs mb-2">Quick Navigation:</div>
             <div className="flex flex-wrap gap-2">
-              {['about', 'projects', 'skills', 'contact', 'help'].map((cmd) => (
+              {['about', 'projects', 'articles', 'skills', 'experience', 'contact', 'ascii', 'help'].map((cmd) => (
                 <button
                   key={cmd}
                   onClick={() => handleQuickCommand(cmd)}
@@ -155,6 +222,9 @@ export const TerminalInterface = () => {
           </div>
         </div>
       </div>
+      
+      <MobileTerminal onCommand={handleQuickCommand} />
+      <TerminalSounds key={soundTrigger} onCommand={() => {}} />
     </div>
   );
 };
