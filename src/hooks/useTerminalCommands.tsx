@@ -219,6 +219,7 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         addOutput('│ cd <dir>       - Change directory                          │');
         addOutput('│ whoami         - Display current user                      │');
         addOutput('│ date           - Show current date and time               │');
+        addOutput('│ exit           - Exit terminal and return to main page    │');
         addOutput('└─────────────────────────────────────────────────────────────┘');
         break;
 
@@ -513,18 +514,35 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         break;
 
       case 'cat':
-        if (args[0] === 'about.md') {
+        if (!args[0]) {
+          addOutput('cat: missing file operand', 'error');
+          addOutput('Usage: cat <filename>');
+          break;
+        }
+        
+        // Check if it's a directory first
+        const catPath = normalizePath(currentPath || '/home/ilham', args[0]);
+        const catTarget = getCurrentDirectory(catPath);
+        
+        if (catTarget && typeof catTarget === 'object') {
+          addOutput(`cat: ${args[0]}: Is a directory`, 'error');
+          addOutput(`Use 'ls ${args[0]}' to list directory contents`);
+          break;
+        }
+        
+        // Handle specific files
+        if (args[0] === 'about' || args[0] === 'about.md') {
           addOutput('=== About Ilham Ramadhan ===');
           addOutput('');
           addOutput('Fullstack Developer with 3+ years of experience building');
           addOutput('scalable web applications. Passionate about clean code,');
           addOutput('modern technologies, and creating exceptional user experiences.');
-        } else if (args[0] === 'contact.txt') {
+        } else if (args[0] === 'contact' || args[0] === 'contact.txt') {
           addOutput('📧 ilham.ramadhan@example.com');
           addOutput('🔗 linkedin.com/in/ilham-ramadhan');
           addOutput('🐙 github.com/ilham-ramadhan');
           addOutput('🌐 ilhamramadhan.dev');
-        } else if (args[0] === 'skills.json') {
+        } else if (args[0] === 'skills' || args[0] === 'skills.json') {
           addOutput('{');
           addOutput('  "frontend": ["React", "Vue.js", "Angular", "TypeScript"],');
           addOutput('  "backend": ["Node.js", "Python", "Java", "Express"],');
@@ -532,9 +550,20 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
           addOutput('  "cloud": ["AWS", "Docker", "Kubernetes"],');
           addOutput('  "tools": ["Git", "Jest", "Cypress", "Figma"]');
           addOutput('}');
+        } else if (args[0] === 'experience' || args[0] === 'experience.json') {
+          addOutput('Experience data loaded. Use "experience" command for better formatting.');
         } else {
-          addOutput(`cat: ${args[0]}: No such file`, 'error');
+          addOutput(`cat: ${args[0]}: No such file or directory`, 'error');
         }
+        break;
+
+      case 'exit':
+        addOutput('👋 Thanks for visiting! Goodbye!');
+        addOutput('');
+        addOutput('Redirecting to main page...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
         break;
 
       default:
@@ -545,7 +574,7 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
   }, [setLines, addOutput, setCurrentPath, getCurrentDirectory, normalizePath]);
 
   const getAvailableCommands = useCallback(() => {
-    return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'contact', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'cd', 'whoami', 'date'];
+    return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'contact', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'cd', 'whoami', 'date', 'exit'];
   }, []);
 
   return {
