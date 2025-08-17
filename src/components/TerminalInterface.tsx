@@ -220,8 +220,8 @@ export const TerminalInterface = () => {
                 <button
                   key={cmd}
                   onClick={() => handleQuickCommand(cmd)}
-                  className="px-3 py-1 text-xs bg-secondary hover:bg-accent text-muted-foreground 
-                           hover:text-accent-foreground transition-terminal border border-border rounded"
+                  className="px-3 py-1 text-xs bg-secondary hover:bg-accent text-terminal-accent 
+                           transition-terminal border border-border rounded"
                 >
                   {cmd}
                 </button>
