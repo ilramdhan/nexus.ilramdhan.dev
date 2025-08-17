@@ -7,7 +7,7 @@ interface TerminalSoundsProps {
 }
 
 export const TerminalSounds = ({ onKeyPress, onCommand, onBoot }: TerminalSoundsProps) => {
-  const [isEnabled, setIsEnabled] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true); // Auto-enabled by default
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
   useEffect(() => {
@@ -69,18 +69,16 @@ export const TerminalSounds = ({ onKeyPress, onCommand, onBoot }: TerminalSounds
   }, [onBoot]);
 
   return (
-    <div className="fixed top-4 right-4 z-50">
-      <button
-        onClick={() => setIsEnabled(!isEnabled)}
-        className={`p-2 rounded text-xs transition-terminal border border-border ${
-          isEnabled 
-            ? 'bg-accent text-primary' 
-            : 'bg-secondary text-terminal-muted hover:bg-muted'
-        }`}
-        title={isEnabled ? 'Disable terminal sounds' : 'Enable terminal sounds'}
-      >
-        {isEnabled ? '🔊' : '🔇'}
-      </button>
-    </div>
+    <button
+      onClick={() => setIsEnabled(!isEnabled)}
+      className={`p-2 rounded text-xs transition-terminal border border-border ${
+        isEnabled 
+          ? 'bg-accent text-primary' 
+          : 'bg-secondary text-terminal-muted hover:bg-muted'
+      }`}
+      title={isEnabled ? 'Disable terminal sounds' : 'Enable terminal sounds'}
+    >
+      {isEnabled ? '🔊' : '🔇'}
+    </button>
   );
 };

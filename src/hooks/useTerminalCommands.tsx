@@ -12,6 +12,32 @@ interface UseTerminalCommandsProps {
   setCurrentPath: React.Dispatch<React.SetStateAction<string>>;
 }
 
+interface DirectoryStructure {
+  [key: string]: DirectoryStructure | null;
+}
+
+const fileSystem: DirectoryStructure = {
+  home: {
+    ilham: {
+      about: null,
+      projects: {
+        'ecommerce-platform': null,
+        'task-management': null,
+        'analytics-dashboard': null,
+      },
+      articles: {
+        'microservices-architecture': null,
+        'react-performance': null,
+        'database-design': null,
+        'devops-ci-cd': null,
+      },
+      contact: null,
+      experience: null,
+      skills: null,
+    }
+  }
+};
+
 export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCommandsProps) => {
   const addOutput = useCallback((content: string, type: 'output' | 'error' | 'info' = 'output') => {
     const newLine: TerminalLine = {
@@ -22,6 +48,40 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
     };
     setLines(prev => [...prev, newLine]);
   }, [setLines]);
+
+  const getCurrentDirectory = useCallback((path: string): DirectoryStructure | null => {
+    const parts = path.split('/').filter(Boolean);
+    let current = fileSystem;
+    
+    for (const part of parts) {
+      if (current && typeof current === 'object' && part in current) {
+        current = current[part] as DirectoryStructure;
+      } else {
+        return null;
+      }
+    }
+    
+    return current;
+  }, []);
+
+  const normalizePath = useCallback((currentPath: string, targetPath: string): string => {
+    if (targetPath.startsWith('/')) {
+      return targetPath;
+    }
+    
+    const parts = currentPath.split('/').filter(Boolean);
+    const targetParts = targetPath.split('/').filter(Boolean);
+    
+    for (const part of targetParts) {
+      if (part === '..') {
+        parts.pop();
+      } else if (part !== '.') {
+        parts.push(part);
+      }
+    }
+    
+    return '/' + parts.join('/');
+  }, []);
 
   const projects = [
     {
@@ -134,7 +194,7 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
     'Tools: Git, Jest, Cypress, Figma'
   ];
 
-  const executeCommand = useCallback((command: string) => {
+  const executeCommand = useCallback((command: string, currentPath: string) => {
     const [cmd, ...args] = command.toLowerCase().split(' ');
 
     switch (cmd) {
@@ -156,6 +216,7 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         addOutput('│ ls             - List directory contents                   │');
         addOutput('│ cat <file>     - Display file contents                     │');
         addOutput('│ pwd            - Show current directory                    │');
+        addOutput('│ cd <dir>       - Change directory                          │');
         addOutput('│ whoami         - Display current user                      │');
         addOutput('│ date           - Show current date and time               │');
         addOutput('└─────────────────────────────────────────────────────────────┘');
@@ -302,18 +363,35 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         break;
 
       case 'ls':
-        if (args[0] === 'projects') {
-          addOutput('ecommerce-platform/  task-management/  analytics-dashboard/');
-        } else if (args[0] === 'articles') {
-          addOutput('microservices-architecture.md  react-performance.md');
-          addOutput('database-design.md           devops-ci-cd.md');
+        const listPath = args[0] ? normalizePath(currentPath || '/home/ilham', args[0]) : currentPath || '/home/ilham';
+        const listDir = getCurrentDirectory(listPath);
+        
+        if (listDir && typeof listDir === 'object') {
+          const items = Object.keys(listDir).map(name => {
+            const isDir = listDir[name] !== null;
+            return isDir ? `${name}/` : name;
+          });
+          addOutput(items.join('  '));
         } else {
-          addOutput('about.md    projects/    articles/    skills.json    contact.txt    experience.json');
+          addOutput(`ls: ${args[0] || '.'}: No such file or directory`, 'error');
         }
         break;
 
       case 'pwd':
-        addOutput('/home/ilham/portfolio');
+        addOutput(currentPath || '/home/ilham');
+        break;
+        
+      case 'cd':
+        const targetPath = args[0] || '/home/ilham';
+        const newPath = normalizePath(currentPath || '/home/ilham', targetPath);
+        const targetDir = getCurrentDirectory(newPath);
+        
+        if (targetDir !== null) {
+          setCurrentPath(newPath);
+          addOutput(`Changed directory to ${newPath}`);
+        } else {
+          addOutput(`cd: ${targetPath}: No such file or directory`, 'error');
+        }
         break;
 
       case 'whoami':
@@ -459,26 +537,15 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         }
         break;
 
-      case 'ls':
-        if (args[0] === 'projects') {
-          addOutput('ecommerce-platform/  task-management/  analytics-dashboard/');
-        } else if (args[0] === 'articles') {
-          addOutput('microservices-architecture.md  react-performance.md');
-          addOutput('database-design.md           devops-ci-cd.md');
-        } else {
-          addOutput('about.md    projects/    articles/    skills.json    contact.txt    experience.json');
-        }
-        break;
-
       default:
         addOutput(`Command not found: ${cmd}`, 'error');
         addOutput('Type "help" to see available commands.');
         break;
     }
-  }, [addOutput, setLines]);
+  }, [setLines, addOutput, setCurrentPath, getCurrentDirectory, normalizePath]);
 
   const getAvailableCommands = useCallback(() => {
-    return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'contact', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'whoami', 'date'];
+    return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'contact', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'cd', 'whoami', 'date'];
   }, []);
 
   return {

@@ -1,4 +1,24 @@
+import { useState, useEffect } from 'react';
+
 export const TerminalHeader = () => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const jakartaTime = currentTime.toLocaleTimeString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
   return (
     <div className="terminal-header">
       <div className="flex items-center">
@@ -12,7 +32,7 @@ export const TerminalHeader = () => {
         </span>
       </div>
       <div className="text-terminal-muted text-xs">
-        {new Date().toLocaleTimeString()}
+        {jakartaTime} WIB
       </div>
     </div>
   );
