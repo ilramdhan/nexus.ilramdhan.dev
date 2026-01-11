@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Terminal, Github, Mail } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Terminal, Mail, KeyRound } from 'lucide-react';
+
+type AuthMode = 'login' | 'signup' | 'reset';
 
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isSignUp, setIsSignUp] = useState(false);
+    const [mode, setMode] = useState<AuthMode>('login');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
-    const { user, isAdmin, signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithGitHub } = useAuth();
+    const { user, isAdmin, signInWithEmail, signUpWithEmail } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -22,18 +26,36 @@ export default function Login() {
         }
     }, [user, isAdmin, navigate, from]);
 
-    const handleEmailSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setSuccessMessage('');
         setLoading(true);
 
         try {
-            const { error } = isSignUp
-                ? await signUpWithEmail(email, password)
-                : await signInWithEmail(email, password);
-
-            if (error) {
-                setError(error.message);
+            if (mode === 'reset') {
+                // Send password reset email
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/admin/reset-password`,
+                });
+                if (error) {
+                    setError(error.message);
+                } else {
+                    setSuccessMessage('Password reset email sent! Check your inbox and click the link to set a new password.');
+                }
+            } else if (mode === 'signup') {
+                const { error } = await signUpWithEmail(email, password);
+                if (error) {
+                    setError(error.message);
+                } else {
+                    setSuccessMessage('Account created! Check your email for confirmation link, then login.');
+                    setMode('login');
+                }
+            } else {
+                const { error } = await signInWithEmail(email, password);
+                if (error) {
+                    setError(error.message);
+                }
             }
         } catch {
             setError('An unexpected error occurred');
@@ -42,20 +64,10 @@ export default function Login() {
         }
     };
 
-    const handleGoogleLogin = async () => {
+    const switchMode = (newMode: AuthMode) => {
+        setMode(newMode);
         setError('');
-        const { error } = await signInWithGoogle();
-        if (error) {
-            setError(error.message);
-        }
-    };
-
-    const handleGitHubLogin = async () => {
-        setError('');
-        const { error } = await signInWithGitHub();
-        if (error) {
-            setError(error.message);
-        }
+        setSuccessMessage('');
     };
 
     return (
@@ -69,7 +81,7 @@ export default function Login() {
                     </div>
                     <div className="flex-1 text-center">
                         <span className="text-terminal-muted text-sm font-medium">
-                            Admin Login
+                            {mode === 'reset' ? 'Reset Password' : mode === 'signup' ? 'Sign Up' : 'Admin Login'}
                         </span>
                     </div>
                 </div>
@@ -81,7 +93,11 @@ export default function Login() {
                             <span className="text-xl font-terminal">Portfolio CMS</span>
                         </Link>
                         <p className="text-terminal-muted text-sm mt-2">
-                            {isSignUp ? 'Create admin account' : 'Sign in to manage your portfolio'}
+                            {mode === 'reset'
+                                ? 'Enter your email to reset password'
+                                : mode === 'signup'
+                                    ? 'Create admin account'
+                                    : 'Sign in to manage your portfolio'}
                         </p>
                     </div>
 
@@ -91,7 +107,13 @@ export default function Login() {
                         </div>
                     )}
 
-                    <form onSubmit={handleEmailSubmit} className="space-y-4 mb-6">
+                    {successMessage && (
+                        <div className="mb-6 p-3 bg-green-500/10 border border-green-500 rounded text-green-500 text-sm font-terminal">
+                            {successMessage}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-4 mb-6">
                         <div>
                             <label htmlFor="email" className="block text-terminal-muted text-sm mb-1 font-terminal">
                                 Email
@@ -107,74 +129,81 @@ export default function Login() {
                             />
                         </div>
 
-                        <div>
-                            <label htmlFor="password" className="block text-terminal-muted text-sm mb-1 font-terminal">
-                                Password
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-2 bg-secondary border border-border rounded text-terminal font-terminal focus:outline-none focus:ring-2 focus:ring-accent"
-                                placeholder="••••••••"
-                                required
-                                minLength={6}
-                            />
-                        </div>
+                        {mode !== 'reset' && (
+                            <div>
+                                <label htmlFor="password" className="block text-terminal-muted text-sm mb-1 font-terminal">
+                                    Password
+                                </label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-2 bg-secondary border border-border rounded text-terminal font-terminal focus:outline-none focus:ring-2 focus:ring-accent"
+                                    placeholder="••••••••"
+                                    required
+                                    minLength={6}
+                                />
+                            </div>
+                        )}
 
                         <button
                             type="submit"
                             disabled={loading}
                             className="w-full py-2 bg-accent text-accent-foreground rounded font-terminal hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            <Mail className="w-4 h-4" />
-                            {loading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In with Email')}
+                            {mode === 'reset' ? <KeyRound className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+                            {loading
+                                ? 'Please wait...'
+                                : mode === 'reset'
+                                    ? 'Send Reset Link'
+                                    : mode === 'signup'
+                                        ? 'Create Account'
+                                        : 'Sign In'}
                         </button>
                     </form>
 
-                    <div className="relative mb-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-border"></div>
+                    <div className="text-center space-y-3">
+                        {mode === 'login' && (
+                            <>
+                                <button
+                                    onClick={() => switchMode('reset')}
+                                    className="text-terminal-muted hover:text-terminal-accent font-terminal text-sm block w-full"
+                                >
+                                    Forgot password? (Or set password for OAuth account)
+                                </button>
+                                <button
+                                    onClick={() => switchMode('signup')}
+                                    className="text-terminal-accent hover:underline font-terminal text-sm"
+                                >
+                                    Don't have an account? Sign up
+                                </button>
+                            </>
+                        )}
+
+                        {mode === 'signup' && (
+                            <button
+                                onClick={() => switchMode('login')}
+                                className="text-terminal-accent hover:underline font-terminal text-sm"
+                            >
+                                Already have an account? Sign in
+                            </button>
+                        )}
+
+                        {mode === 'reset' && (
+                            <button
+                                onClick={() => switchMode('login')}
+                                className="text-terminal-accent hover:underline font-terminal text-sm"
+                            >
+                                Back to login
+                            </button>
+                        )}
+
+                        <div className="pt-4 border-t border-border">
+                            <p className="text-terminal-muted text-xs">
+                                Only emails listed in VITE_ALLOWED_ADMIN_EMAILS can access the admin panel.
+                            </p>
                         </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-terminal text-terminal-muted font-terminal">or continue with</span>
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <button
-                            onClick={handleGoogleLogin}
-                            className="w-full py-2 bg-secondary border border-border rounded font-terminal text-terminal hover:bg-accent/10 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                            </svg>
-                            Google
-                        </button>
-
-                        <button
-                            onClick={handleGitHubLogin}
-                            className="w-full py-2 bg-secondary border border-border rounded font-terminal text-terminal hover:bg-accent/10 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <Github className="w-4 h-4" />
-                            GitHub
-                        </button>
-                    </div>
-
-                    <div className="mt-6 text-center">
-                        <button
-                            onClick={() => {
-                                setIsSignUp(!isSignUp);
-                                setError('');
-                            }}
-                            className="text-terminal-accent hover:underline font-terminal text-sm"
-                        >
-                            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-                        </button>
                     </div>
 
                     <div className="mt-8 text-center">
