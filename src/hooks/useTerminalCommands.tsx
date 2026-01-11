@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { Project, Blog, Resume, TechStack, Profile, Service, Certificate } from '@/types/database';
+import { parseMarkdownToTerminal, truncateMarkdown } from '@/utils/markdownParser';
 
 interface TerminalLine {
   id: string;
@@ -44,6 +45,13 @@ export const useTerminalCommands = ({
     };
     setLines(prev => [...prev, newLine]);
   }, [setLines]);
+
+  // Add multiple lines of output (for markdown content)
+  const addMarkdownOutput = useCallback((markdown: string, maxLength?: number) => {
+    const content = maxLength ? truncateMarkdown(markdown, maxLength) : markdown;
+    const lines = parseMarkdownToTerminal(content);
+    lines.forEach(line => addOutput(line));
+  }, [addOutput]);
 
   // Build dynamic file system based on data
   const fileSystem: DirectoryStructure = {
@@ -199,7 +207,9 @@ export const useTerminalCommands = ({
           blogs.slice(0, 6).forEach((article, index) => {
             addOutput(`${index + 1}. ${article.title}`);
             addOutput(`   📅 ${article.published_at ? new Date(article.published_at).toLocaleDateString() : 'Draft'}`);
-            addOutput(`   📝 ${article.excerpt || 'No description'}`);
+            if (article.excerpt) {
+              addOutput(`   📝 ${article.excerpt}`);
+            }
             if (article.tags?.length) addOutput(`   🏷️ Tags: ${article.tags.join(', ')}`);
             addOutput('');
           });
@@ -218,7 +228,10 @@ export const useTerminalCommands = ({
           experiences.forEach((exp) => {
             addOutput(`🏢 ${exp.title} @ ${exp.institution || 'Unknown'}`);
             addOutput(`   📅 ${exp.period || 'N/A'}`);
-            if (exp.description) addOutput(`   • ${exp.description}`);
+            if (exp.description) {
+              addOutput('');
+              addMarkdownOutput(exp.description, 300);
+            }
             addOutput('');
           });
         }
@@ -237,7 +250,10 @@ export const useTerminalCommands = ({
             addOutput(`   🏫 ${edu.institution || 'Unknown'}`);
             addOutput(`   📅 ${edu.period || 'N/A'}`);
             if (edu.gpa) addOutput(`   📊 GPA: ${edu.gpa}`);
-            if (edu.description) addOutput(`   • ${edu.description}`);
+            if (edu.description) {
+              addOutput('');
+              addMarkdownOutput(edu.description, 300);
+            }
             addOutput('');
           });
         }
@@ -254,7 +270,9 @@ export const useTerminalCommands = ({
         } else {
           services.forEach((service, index) => {
             addOutput(`${index + 1}. 🛠️ ${service.title}`);
-            if (service.description) addOutput(`   ${service.description}`);
+            if (service.description) {
+              addMarkdownOutput(service.description, 200);
+            }
             addOutput('');
           });
         }
@@ -273,6 +291,9 @@ export const useTerminalCommands = ({
             addOutput(`${index + 1}. 🏆 ${cert.title}`);
             if (cert.issued_by) addOutput(`   📋 Issued by: ${cert.issued_by}`);
             if (cert.issued_date) addOutput(`   📅 Date: ${cert.issued_date}`);
+            if (cert.description) {
+              addMarkdownOutput(cert.description, 200);
+            }
             if (cert.credential_url) addOutput(`   🔗 Verify: ${cert.credential_url}`);
             addOutput('');
           });
@@ -300,12 +321,12 @@ export const useTerminalCommands = ({
         break;
 
       case 'about':
-        addOutput(`=== About ${profile?.display_name || 'Me'} ===`);
+        addOutput(`═══ ABOUT ${(profile?.display_name || 'ME').toUpperCase()} ═══`);
         addOutput('');
         if (profile?.detailed_bio) {
-          addOutput(profile.detailed_bio);
+          addMarkdownOutput(profile.detailed_bio);
         } else if (profile?.short_description) {
-          addOutput(profile.short_description);
+          addMarkdownOutput(profile.short_description);
         } else {
           addOutput('Fullstack Developer passionate about building');
           addOutput('scalable web applications with modern technologies.');
@@ -324,7 +345,9 @@ export const useTerminalCommands = ({
             const featured = project.is_featured ? ' ⭐' : '';
             addOutput(`${index + 1}. ${project.title}${featured}`);
             addOutput(`   🔧 ${project.tech_stack?.join(', ') || 'N/A'}`);
-            addOutput(`   📝 ${project.short_description || 'No description'}`);
+            if (project.short_description) {
+              addOutput(`   📝 ${project.short_description}`);
+            }
             addOutput('');
           });
           addOutput('💡 Use "project <number>" for detailed view');
@@ -332,7 +355,7 @@ export const useTerminalCommands = ({
         break;
 
       case 'skills':
-        addOutput('=== Technical Skills ===');
+        addOutput('═══ TECHNICAL SKILLS ═══');
         addOutput('');
         if (Object.keys(groupedSkills).length === 0) {
           addOutput('No skills added yet.', 'info');
@@ -345,7 +368,7 @@ export const useTerminalCommands = ({
 
       case 'contact':
       case 'social':
-        addOutput('=== Contact Information ===');
+        addOutput('═══ CONTACT INFORMATION ═══');
         addOutput('');
         if (socialLinks.email) addOutput(`📧 Email: ${socialLinks.email}`);
         if (socialLinks.linkedin) addOutput(`🔗 LinkedIn: ${socialLinks.linkedin}`);
@@ -420,11 +443,13 @@ export const useTerminalCommands = ({
           addOutput('└─────────────────────────────────────────────────────────────┘');
           addOutput('');
           addOutput(`🔧 Tech Stack: ${project.tech_stack?.join(', ') || 'N/A'}`);
-          addOutput(`📝 Description: ${project.short_description || 'No description'}`);
+          if (project.short_description) {
+            addOutput(`📝 Summary: ${project.short_description}`);
+          }
           addOutput('');
           if (project.content) {
-            addOutput('📖 Details:');
-            addOutput(project.content);
+            addOutput('── DETAILS ──');
+            addMarkdownOutput(project.content);
             addOutput('');
           }
           addOutput('🔗 Links:');
@@ -453,13 +478,13 @@ export const useTerminalCommands = ({
           addOutput(`📅 Published: ${article.published_at ? new Date(article.published_at).toLocaleDateString() : 'Draft'}`);
           addOutput('');
           if (article.excerpt) {
-            addOutput('📝 Summary:');
-            addOutput(`   ${article.excerpt}`);
+            addOutput('── SUMMARY ──');
+            addOutput(article.excerpt);
             addOutput('');
           }
           if (article.content) {
-            addOutput('📖 Content:');
-            addOutput(article.content.slice(0, 500) + (article.content.length > 500 ? '...' : ''));
+            addOutput('── CONTENT ──');
+            addMarkdownOutput(article.content, 1000);
           }
           if (article.tags?.length) addOutput(`\n🏷️ Tags: ${article.tags.join(', ')}`);
         } else if (args[0]) {
@@ -472,9 +497,9 @@ export const useTerminalCommands = ({
 
       case 'cat':
         if (args[0] === 'about.md') {
-          addOutput(`=== About ${profile?.display_name || 'Me'} ===`);
+          addOutput(`═══ ABOUT ${(profile?.display_name || 'ME').toUpperCase()} ═══`);
           addOutput('');
-          addOutput(profile?.detailed_bio || profile?.short_description || 'No bio available.');
+          addMarkdownOutput(profile?.detailed_bio || profile?.short_description || 'No bio available.');
         } else if (args[0] === 'contact.txt') {
           Object.entries(socialLinks).forEach(([key, value]) => {
             if (value) addOutput(`${key}: ${value}`);
@@ -491,7 +516,7 @@ export const useTerminalCommands = ({
         addOutput('Type "help" to see available commands.');
         break;
     }
-  }, [setLines, addOutput, setCurrentPath, getCurrentDirectory, normalizePath, projects, blogs, experiences, education, services, certificates, groupedSkills, profile, socialLinks]);
+  }, [setLines, addOutput, addMarkdownOutput, setCurrentPath, getCurrentDirectory, normalizePath, projects, blogs, experiences, education, services, certificates, groupedSkills, profile, socialLinks]);
 
   const getAvailableCommands = useCallback(() => {
     return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'education', 'services', 'certificates', 'contact', 'social', 'resume', 'cv', 'admin', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'cd', 'whoami', 'date'];
