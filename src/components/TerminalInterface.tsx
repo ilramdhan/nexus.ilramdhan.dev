@@ -9,7 +9,8 @@ import { MobileTerminal } from './MobileTerminal';
 import { CommandAutocomplete } from './CommandAutocomplete';
 import { TerminalSounds } from './TerminalSounds';
 import { ThemeToggle } from './ThemeToggle';
-import { Project, Blog, Resume, TechStack, Profile } from '@/types/database';
+import { Project, Blog, Resume, TechStack, Profile, Service, Certificate } from '@/types/database';
+import { Settings } from 'lucide-react';
 
 interface TerminalLine {
   id: string;
@@ -29,77 +30,86 @@ export const TerminalInterface = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Fetch data from Supabase with error handling
-  const { data: projects = [], error: projectsError } = useQuery({
+  // Fetch data from Supabase
+  const { data: projects = [] } = useQuery({
     queryKey: ['public-projects'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false });
-      if (error) {
-        console.error('Error fetching projects:', error);
-        throw error;
-      }
-      console.log('Projects fetched:', data);
+      if (error) throw error;
       return (data || []) as Project[];
     },
     retry: 1,
   });
 
-  const { data: blogs = [], error: blogsError } = useQuery({
+  const { data: blogs = [] } = useQuery({
     queryKey: ['public-blogs'],
     queryFn: async () => {
-      // Fetch all blogs (not just published) for now
       const { data, error } = await supabase
         .from('blogs')
         .select('*')
         .order('created_at', { ascending: false });
-      if (error) {
-        console.error('Error fetching blogs:', error);
-        throw error;
-      }
-      console.log('Blogs fetched:', data);
+      if (error) throw error;
       return (data || []) as Blog[];
     },
     retry: 1,
   });
 
-  const { data: resume = [], error: resumeError } = useQuery({
+  const { data: resume = [] } = useQuery({
     queryKey: ['public-resume'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('resume')
         .select('*')
         .order('id', { ascending: false });
-      if (error) {
-        console.error('Error fetching resume:', error);
-        throw error;
-      }
-      console.log('Resume fetched:', data);
+      if (error) throw error;
       return (data || []) as Resume[];
     },
     retry: 1,
   });
 
-  const { data: techStack = [], error: techStackError } = useQuery({
+  const { data: techStack = [] } = useQuery({
     queryKey: ['public-tech-stack'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tech_stack')
         .select('*')
         .order('category');
-      if (error) {
-        console.error('Error fetching tech_stack:', error);
-        throw error;
-      }
-      console.log('Tech stack fetched:', data);
+      if (error) throw error;
       return (data || []) as TechStack[];
     },
     retry: 1,
   });
 
-  const { data: profile, error: profileError } = useQuery({
+  const { data: services = [] } = useQuery({
+    queryKey: ['public-services'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .order('id');
+      if (error) throw error;
+      return (data || []) as Service[];
+    },
+    retry: 1,
+  });
+
+  const { data: certificates = [] } = useQuery({
+    queryKey: ['public-certificates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('certificates')
+        .select('*')
+        .order('issued_date', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Certificate[];
+    },
+    retry: 1,
+  });
+
+  const { data: profile } = useQuery({
     queryKey: ['public-profile'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -107,24 +117,11 @@ export const TerminalInterface = () => {
         .select('*')
         .limit(1)
         .maybeSingle();
-      if (error) {
-        console.error('Error fetching profile:', error);
-        throw error;
-      }
-      console.log('Profile fetched:', data);
+      if (error) throw error;
       return data as Profile | null;
     },
     retry: 1,
   });
-
-  // Log any errors
-  useEffect(() => {
-    if (projectsError) console.error('Projects query error:', projectsError);
-    if (blogsError) console.error('Blogs query error:', blogsError);
-    if (resumeError) console.error('Resume query error:', resumeError);
-    if (techStackError) console.error('Tech stack query error:', techStackError);
-    if (profileError) console.error('Profile query error:', profileError);
-  }, [projectsError, blogsError, resumeError, techStackError, profileError]);
 
   const { executeCommand, getAvailableCommands } = useTerminalCommands({
     setLines,
@@ -134,6 +131,8 @@ export const TerminalInterface = () => {
     resume,
     techStack,
     profile,
+    services,
+    certificates,
   });
 
   useEffect(() => {
@@ -243,6 +242,13 @@ export const TerminalInterface = () => {
 
       {/* Control Panel */}
       <div className="fixed top-4 right-4 z-50 flex gap-2">
+        <a
+          href="/admin/login"
+          className="p-2 bg-secondary/80 border border-border rounded hover:bg-accent/20 transition-colors"
+          title="Admin Panel"
+        >
+          <Settings className="w-5 h-5 text-terminal-muted hover:text-terminal-accent" />
+        </a>
         <TerminalSounds key={soundTrigger} onCommand={() => { }} />
         <ThemeToggle />
       </div>
@@ -307,7 +313,7 @@ export const TerminalInterface = () => {
           <div className="p-4 border-t border-border bg-muted/30">
             <div className="text-terminal-muted text-xs mb-2">Quick Navigation:</div>
             <div className="flex flex-wrap gap-2">
-              {['about', 'projects', 'articles', 'skills', 'experience', 'contact', 'ascii', 'help'].map((cmd) => (
+              {['about', 'projects', 'articles', 'skills', 'experience', 'education', 'services', 'certificates', 'contact', 'resume', 'help'].map((cmd) => (
                 <button
                   key={cmd}
                   onClick={() => handleQuickCommand(cmd)}

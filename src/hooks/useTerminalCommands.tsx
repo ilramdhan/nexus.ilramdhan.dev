@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Project, Blog, Resume, TechStack, Profile } from '@/types/database';
+import { Project, Blog, Resume, TechStack, Profile, Service, Certificate } from '@/types/database';
 
 interface TerminalLine {
   id: string;
@@ -16,6 +16,8 @@ interface UseTerminalCommandsProps {
   resume?: Resume[];
   techStack?: TechStack[];
   profile?: Profile | null;
+  services?: Service[];
+  certificates?: Certificate[];
 }
 
 interface DirectoryStructure {
@@ -30,6 +32,8 @@ export const useTerminalCommands = ({
   resume = [],
   techStack = [],
   profile,
+  services = [],
+  certificates = [],
 }: UseTerminalCommandsProps) => {
   const addOutput = useCallback((content: string, type: 'output' | 'error' | 'info' = 'output') => {
     const newLine: TerminalLine = {
@@ -56,7 +60,10 @@ export const useTerminalCommands = ({
         }, {} as DirectoryStructure),
         contact: null,
         experience: null,
+        education: null,
         skills: null,
+        services: null,
+        certificates: null,
       }
     }
   };
@@ -103,11 +110,12 @@ export const useTerminalCommands = ({
     return acc;
   }, {} as Record<string, string[]>);
 
-  // Filter experiences
+  // Filter experiences and education
   const experiences = resume.filter(r => r.type === 'experience');
+  const education = resume.filter(r => r.type === 'education');
 
   // Get social links from profile
-  const socialLinks = profile?.social_links || {};
+  const socialLinks = (profile?.social_links || {}) as Record<string, string>;
 
   const executeCommand = useCallback((command: string, currentPath: string) => {
     const [cmd, ...args] = command.toLowerCase().trim().split(' ');
@@ -123,17 +131,22 @@ export const useTerminalCommands = ({
         addOutput('│ articles       - View blog posts                            │');
         addOutput('│ article <n>    - Read specific article                     │');
         addOutput('│ skills         - Display technical skills                   │');
-        addOutput('│ contact        - Get contact information                    │');
         addOutput('│ experience     - View work experience                      │');
+        addOutput('│ education      - View education background                 │');
+        addOutput('│ services       - View services I offer                     │');
+        addOutput('│ certificates   - View my certifications                    │');
+        addOutput('│ contact        - Get contact information                    │');
+        addOutput('│ social         - Show social media links                   │');
+        addOutput('│ resume         - Download my CV/Resume                     │');
         addOutput('│ ascii          - Show ASCII art logo                       │');
         addOutput('│ tree           - Show file structure                       │');
+        addOutput('│ admin          - Go to admin panel                         │');
         addOutput('│ clear          - Clear terminal screen                     │');
         addOutput('│ ls             - List directory contents                   │');
         addOutput('│ pwd            - Show current directory                    │');
         addOutput('│ cd <dir>       - Change directory                          │');
         addOutput('│ whoami         - Display current user                      │');
         addOutput('│ date           - Show current date and time               │');
-        addOutput('│ social         - Show social media links                   │');
         addOutput('└─────────────────────────────────────────────────────────────┘');
         break;
 
@@ -169,6 +182,9 @@ export const useTerminalCommands = ({
           addOutput(`${prefix} ${b.slug || b.title.toLowerCase().replace(/\s+/g, '-')}.md`);
         });
         addOutput('├── experience.json');
+        addOutput('├── education.json');
+        addOutput('├── services.json');
+        addOutput('├── certificates.json');
         addOutput('└── skills.json');
         break;
 
@@ -197,7 +213,7 @@ export const useTerminalCommands = ({
         addOutput('└─────────────────────────────────────────────────────────────┘');
         addOutput('');
         if (experiences.length === 0) {
-          addOutput('No experience entries yet.', 'info');
+          addOutput('No work experience entries yet.', 'info');
         } else {
           experiences.forEach((exp) => {
             addOutput(`🏢 ${exp.title} @ ${exp.institution || 'Unknown'}`);
@@ -206,6 +222,81 @@ export const useTerminalCommands = ({
             addOutput('');
           });
         }
+        break;
+
+      case 'education':
+        addOutput('┌─────────────────────────────────────────────────────────────┐');
+        addOutput('│                       EDUCATION                             │');
+        addOutput('└─────────────────────────────────────────────────────────────┘');
+        addOutput('');
+        if (education.length === 0) {
+          addOutput('No education entries yet.', 'info');
+        } else {
+          education.forEach((edu) => {
+            addOutput(`🎓 ${edu.title}`);
+            addOutput(`   🏫 ${edu.institution || 'Unknown'}`);
+            addOutput(`   📅 ${edu.period || 'N/A'}`);
+            if (edu.gpa) addOutput(`   📊 GPA: ${edu.gpa}`);
+            if (edu.description) addOutput(`   • ${edu.description}`);
+            addOutput('');
+          });
+        }
+        break;
+
+      case 'services':
+      case 'whatido':
+        addOutput('┌─────────────────────────────────────────────────────────────┐');
+        addOutput('│                    SERVICES I OFFER                         │');
+        addOutput('└─────────────────────────────────────────────────────────────┘');
+        addOutput('');
+        if (services.length === 0) {
+          addOutput('No services listed yet.', 'info');
+        } else {
+          services.forEach((service, index) => {
+            addOutput(`${index + 1}. 🛠️ ${service.title}`);
+            if (service.description) addOutput(`   ${service.description}`);
+            addOutput('');
+          });
+        }
+        break;
+
+      case 'certificates':
+      case 'certs':
+        addOutput('┌─────────────────────────────────────────────────────────────┐');
+        addOutput('│                    MY CERTIFICATIONS                        │');
+        addOutput('└─────────────────────────────────────────────────────────────┘');
+        addOutput('');
+        if (certificates.length === 0) {
+          addOutput('No certificates yet.', 'info');
+        } else {
+          certificates.forEach((cert, index) => {
+            addOutput(`${index + 1}. 🏆 ${cert.title}`);
+            if (cert.issued_by) addOutput(`   📋 Issued by: ${cert.issued_by}`);
+            if (cert.issued_date) addOutput(`   📅 Date: ${cert.issued_date}`);
+            if (cert.credential_url) addOutput(`   🔗 Verify: ${cert.credential_url}`);
+            addOutput('');
+          });
+        }
+        break;
+
+      case 'resume':
+      case 'cv':
+      case 'download':
+        if (profile?.resume_url) {
+          addOutput('📄 Download my CV/Resume:');
+          addOutput(`   🔗 ${profile.resume_url}`);
+          addOutput('');
+          addOutput('Opening download link...', 'info');
+          window.open(profile.resume_url, '_blank');
+        } else {
+          addOutput('Resume/CV not available yet.', 'info');
+        }
+        break;
+
+      case 'admin':
+      case 'login':
+        addOutput('🔐 Opening Admin Panel...', 'info');
+        window.location.href = '/admin/login';
         break;
 
       case 'about':
@@ -400,10 +491,10 @@ export const useTerminalCommands = ({
         addOutput('Type "help" to see available commands.');
         break;
     }
-  }, [setLines, addOutput, setCurrentPath, getCurrentDirectory, normalizePath, projects, blogs, experiences, groupedSkills, profile, socialLinks]);
+  }, [setLines, addOutput, setCurrentPath, getCurrentDirectory, normalizePath, projects, blogs, experiences, education, services, certificates, groupedSkills, profile, socialLinks]);
 
   const getAvailableCommands = useCallback(() => {
-    return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'contact', 'social', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'cd', 'whoami', 'date'];
+    return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'education', 'services', 'certificates', 'contact', 'social', 'resume', 'cv', 'admin', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'cd', 'whoami', 'date'];
   }, []);
 
   return {

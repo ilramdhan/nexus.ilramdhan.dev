@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 // Admin pages
 import Login from "./pages/admin/Login";
 import AuthCallback from "./pages/admin/AuthCallback";
+import ResetPassword from "./pages/admin/ResetPassword";
 import Dashboard from "./pages/admin/Dashboard";
 import ProjectsPage from "./pages/admin/ProjectsPage";
 import BlogsPage from "./pages/admin/BlogsPage";
@@ -39,6 +40,7 @@ const App = () => (
             {/* Admin Auth Routes */}
             <Route path="/admin/login" element={<Login />} />
             <Route path="/admin/callback" element={<AuthCallback />} />
+            <Route path="/admin/reset-password" element={<ResetPassword />} />
 
             {/* Protected Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
