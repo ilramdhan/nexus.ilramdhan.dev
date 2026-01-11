@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { Project, Blog, Resume, TechStack, Profile } from '@/types/database';
 
 interface TerminalLine {
   id: string;
@@ -10,38 +11,29 @@ interface TerminalLine {
 interface UseTerminalCommandsProps {
   setLines: React.Dispatch<React.SetStateAction<TerminalLine[]>>;
   setCurrentPath: React.Dispatch<React.SetStateAction<string>>;
+  projects?: Project[];
+  blogs?: Blog[];
+  resume?: Resume[];
+  techStack?: TechStack[];
+  profile?: Profile | null;
 }
 
 interface DirectoryStructure {
   [key: string]: DirectoryStructure | null;
 }
 
-const fileSystem: DirectoryStructure = {
-  home: {
-    ilham: {
-      about: null,
-      projects: {
-        'ecommerce-platform': null,
-        'task-management': null,
-        'analytics-dashboard': null,
-      },
-      articles: {
-        'microservices-architecture': null,
-        'react-performance': null,
-        'database-design': null,
-        'devops-ci-cd': null,
-      },
-      contact: null,
-      experience: null,
-      skills: null,
-    }
-  }
-};
-
-export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCommandsProps) => {
+export const useTerminalCommands = ({
+  setLines,
+  setCurrentPath,
+  projects = [],
+  blogs = [],
+  resume = [],
+  techStack = [],
+  profile,
+}: UseTerminalCommandsProps) => {
   const addOutput = useCallback((content: string, type: 'output' | 'error' | 'info' = 'output') => {
     const newLine: TerminalLine = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random(),
       content,
       type,
       timestamp: Date.now(),
@@ -49,10 +41,30 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
     setLines(prev => [...prev, newLine]);
   }, [setLines]);
 
+  // Build dynamic file system based on data
+  const fileSystem: DirectoryStructure = {
+    home: {
+      ilham: {
+        about: null,
+        projects: projects.reduce((acc, p) => {
+          acc[p.slug || p.title.toLowerCase().replace(/\s+/g, '-')] = null;
+          return acc;
+        }, {} as DirectoryStructure),
+        articles: blogs.reduce((acc, b) => {
+          acc[b.slug || b.title.toLowerCase().replace(/\s+/g, '-')] = null;
+          return acc;
+        }, {} as DirectoryStructure),
+        contact: null,
+        experience: null,
+        skills: null,
+      }
+    }
+  };
+
   const getCurrentDirectory = useCallback((path: string): DirectoryStructure | null => {
     const parts = path.split('/').filter(Boolean);
-    let current = fileSystem;
-    
+    let current: DirectoryStructure | null = fileSystem;
+
     for (const part of parts) {
       if (current && typeof current === 'object' && part in current) {
         current = current[part] as DirectoryStructure;
@@ -60,18 +72,18 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         return null;
       }
     }
-    
+
     return current;
-  }, []);
+  }, [fileSystem]);
 
   const normalizePath = useCallback((currentPath: string, targetPath: string): string => {
     if (targetPath.startsWith('/')) {
       return targetPath;
     }
-    
+
     const parts = currentPath.split('/').filter(Boolean);
     const targetParts = targetPath.split('/').filter(Boolean);
-    
+
     for (const part of targetParts) {
       if (part === '..') {
         parts.pop();
@@ -79,134 +91,37 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         parts.push(part);
       }
     }
-    
+
     return '/' + parts.join('/');
   }, []);
 
-  const projects = [
-    {
-      id: 'ecommerce-platform',
-      name: 'E-Commerce Platform',
-      tech: 'React, Node.js, PostgreSQL, Stripe',
-      description: 'Full-featured online shopping platform with payment integration',
-      status: 'Production',
-      github: 'https://github.com/ilham-ramadhan/ecommerce-platform',
-      demo: 'https://my-ecommerce-demo.com',
-      features: [
-        'User authentication & authorization',
-        'Product catalog with search & filtering',
-        'Shopping cart & checkout process',
-        'Payment integration with Stripe',
-        'Admin dashboard for inventory management',
-        'Order tracking & email notifications'
-      ],
-      challenges: 'Implementing real-time inventory updates and optimizing database queries for large product catalogs.',
-      learned: 'Advanced PostgreSQL optimization, Redis caching strategies, and serverless architecture patterns.'
-    },
-    {
-      id: 'task-management',
-      name: 'Task Management App',
-      tech: 'Vue.js, Express, MongoDB, Socket.io',
-      description: 'Collaborative project management tool with real-time updates',
-      status: 'Development',
-      github: 'https://github.com/ilham-ramadhan/task-manager',
-      demo: 'https://task-manager-demo.com',
-      features: [
-        'Real-time collaboration with Socket.io',
-        'Kanban boards with drag-and-drop',
-        'Team management & role-based permissions',
-        'Time tracking & reporting',
-        'File attachments & comments',
-        'Mobile-responsive design'
-      ],
-      challenges: 'Handling real-time synchronization conflicts and implementing efficient permission systems.',
-      learned: 'WebSocket management, conflict resolution strategies, and Vue 3 Composition API best practices.'
-    },
-    {
-      id: 'analytics-dashboard',
-      name: 'Analytics Dashboard',
-      tech: 'Angular, Python, FastAPI, PostgreSQL',
-      description: 'Business intelligence dashboard with data visualization',
-      status: 'Production',
-      github: 'https://github.com/ilham-ramadhan/analytics-dashboard',
-      demo: 'https://analytics-demo.com',
-      features: [
-        'Interactive charts with Chart.js & D3.js',
-        'Real-time data processing',
-        'Custom report generation',
-        'Data export in multiple formats',
-        'Role-based access control',
-        'API rate limiting & caching'
-      ],
-      challenges: 'Processing large datasets efficiently and creating performant real-time visualizations.',
-      learned: 'Data processing optimization, advanced Angular patterns, and Python async programming.'
-    }
-  ];
+  // Group tech stack by category
+  const groupedSkills = techStack.reduce((acc, tech) => {
+    const cat = tech.category || 'Other';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(tech.name);
+    return acc;
+  }, {} as Record<string, string[]>);
 
-  const articles = [
-    {
-      id: 'microservices-architecture',
-      title: 'Building Scalable Microservices with Node.js',
-      date: '2024-01-15',
-      category: 'Backend',
-      readTime: '8 min read',
-      description: 'A comprehensive guide to designing and implementing microservices architecture using Node.js, Docker, and Kubernetes.',
-      tags: ['Node.js', 'Microservices', 'Docker', 'Kubernetes'],
-      preview: 'Microservices architecture has become the gold standard for building scalable applications...'
-    },
-    {
-      id: 'react-performance',
-      title: 'React Performance Optimization: Beyond the Basics',
-      date: '2024-01-08',
-      category: 'Frontend',
-      readTime: '12 min read',
-      description: 'Advanced techniques for optimizing React applications including code splitting, memoization, and bundle analysis.',
-      tags: ['React', 'Performance', 'Optimization', 'Webpack'],
-      preview: 'Performance optimization is crucial for modern React applications. In this article, we\'ll explore...'
-    },
-    {
-      id: 'database-design',
-      title: 'Database Design Patterns for Modern Applications',
-      date: '2023-12-28',
-      category: 'Database',
-      readTime: '10 min read',
-      description: 'Exploring different database design patterns and when to use them in modern web applications.',
-      tags: ['Database', 'PostgreSQL', 'Design Patterns', 'SQL'],
-      preview: 'Choosing the right database design pattern can make or break your application\'s performance...'
-    },
-    {
-      id: 'devops-ci-cd',
-      title: 'Complete CI/CD Pipeline with GitHub Actions',
-      date: '2023-12-20',
-      category: 'DevOps',
-      readTime: '15 min read',
-      description: 'Step-by-step guide to setting up automated deployment pipelines using GitHub Actions, Docker, and AWS.',
-      tags: ['CI/CD', 'GitHub Actions', 'Docker', 'AWS'],
-      preview: 'Continuous Integration and Deployment are essential for modern development workflows...'
-    }
-  ];
+  // Filter experiences
+  const experiences = resume.filter(r => r.type === 'experience');
 
-  const skills = [
-    'Frontend: React, Vue.js, Angular, TypeScript, Tailwind CSS',
-    'Backend: Node.js, Python, Java, Express, FastAPI',
-    'Database: PostgreSQL, MongoDB, Redis',
-    'Cloud: AWS, Docker, Kubernetes',
-    'Tools: Git, Jest, Cypress, Figma'
-  ];
+  // Get social links from profile
+  const socialLinks = profile?.social_links || {};
 
   const executeCommand = useCallback((command: string, currentPath: string) => {
-    const [cmd, ...args] = command.toLowerCase().split(' ');
+    const [cmd, ...args] = command.toLowerCase().trim().split(' ');
 
     switch (cmd) {
       case 'help':
         addOutput('┌─────────────────────────────────────────────────────────────┐');
         addOutput('│                    AVAILABLE COMMANDS                       │');
         addOutput('├─────────────────────────────────────────────────────────────┤');
-        addOutput('│ about          - Learn about Ilham Ramadhan                │');
-        addOutput('│ projects       - View recent projects                       │');
-        addOutput('│ project <id>   - View detailed project info                │');
-        addOutput('│ articles       - View recent articles/blog posts           │');
-        addOutput('│ article <id>   - Read specific article                     │');
+        addOutput('│ about          - Learn about me                             │');
+        addOutput('│ projects       - View portfolio projects                    │');
+        addOutput('│ project <n>    - View detailed project info                │');
+        addOutput('│ articles       - View blog posts                            │');
+        addOutput('│ article <n>    - Read specific article                     │');
         addOutput('│ skills         - Display technical skills                   │');
         addOutput('│ contact        - Get contact information                    │');
         addOutput('│ experience     - View work experience                      │');
@@ -214,11 +129,11 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         addOutput('│ tree           - Show file structure                       │');
         addOutput('│ clear          - Clear terminal screen                     │');
         addOutput('│ ls             - List directory contents                   │');
-        addOutput('│ cat <file>     - Display file contents                     │');
         addOutput('│ pwd            - Show current directory                    │');
         addOutput('│ cd <dir>       - Change directory                          │');
         addOutput('│ whoami         - Display current user                      │');
         addOutput('│ date           - Show current date and time               │');
+        addOutput('│ social         - Show social media links                   │');
         addOutput('└─────────────────────────────────────────────────────────────┘');
         break;
 
@@ -235,7 +150,7 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         addOutput('    ╠╦╝ ╠═╣ ║║║ ╠═╣  ║║ ╠═╣ ╠═╣ ║║║');
         addOutput('    ╩╚═ ╩ ╩ ╩ ╩ ╩ ╩ ╩╩╝ ╩ ╩ ╩ ╩ ╝╚╝');
         addOutput('');
-        addOutput('    Fullstack Developer & Code Architect');
+        addOutput(`    ${profile?.badge_text || 'Fullstack Developer'}`);
         addOutput('');
         break;
 
@@ -244,32 +159,36 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         addOutput('├── about.md');
         addOutput('├── contact.txt');
         addOutput('├── projects/');
-        addOutput('│   ├── ecommerce-platform/');
-        addOutput('│   ├── task-management/');
-        addOutput('│   └── analytics-dashboard/');
+        projects.forEach((p, i) => {
+          const prefix = i === projects.length - 1 ? '│   └──' : '│   ├──';
+          addOutput(`${prefix} ${p.slug || p.title.toLowerCase().replace(/\s+/g, '-')}/`);
+        });
         addOutput('├── articles/');
-        addOutput('│   ├── microservices-architecture.md');
-        addOutput('│   ├── react-performance.md');
-        addOutput('│   ├── database-design.md');
-        addOutput('│   └── devops-ci-cd.md');
+        blogs.forEach((b, i) => {
+          const prefix = i === blogs.length - 1 ? '│   └──' : '│   ├──';
+          addOutput(`${prefix} ${b.slug || b.title.toLowerCase().replace(/\s+/g, '-')}.md`);
+        });
         addOutput('├── experience.json');
         addOutput('└── skills.json');
         break;
 
       case 'articles':
-        addOutput('┌─────────────────────────────────────────────────────────────┐');
-        addOutput('│                      RECENT ARTICLES                        │');
-        addOutput('└─────────────────────────────────────────────────────────────┘');
-        addOutput('');
-        articles.slice(0, 4).forEach((article, index) => {
-          addOutput(`${index + 1}. ${article.title}`);
-          addOutput(`   📅 ${article.date} │ 📂 ${article.category} │ ⏱️ ${article.readTime}`);
-          addOutput(`   📝 ${article.description}`);
-          addOutput(`   🏷️ Tags: ${article.tags.join(', ')}`);
+        if (blogs.length === 0) {
+          addOutput('No articles available yet.', 'info');
+        } else {
+          addOutput('┌─────────────────────────────────────────────────────────────┐');
+          addOutput('│                      BLOG ARTICLES                          │');
+          addOutput('└─────────────────────────────────────────────────────────────┘');
           addOutput('');
-        });
-        addOutput('💡 Use "article <number>" to read full article');
-        addOutput('💡 Use "articles --all" to see all articles');
+          blogs.slice(0, 6).forEach((article, index) => {
+            addOutput(`${index + 1}. ${article.title}`);
+            addOutput(`   📅 ${article.published_at ? new Date(article.published_at).toLocaleDateString() : 'Draft'}`);
+            addOutput(`   📝 ${article.excerpt || 'No description'}`);
+            if (article.tags?.length) addOutput(`   🏷️ Tags: ${article.tags.join(', ')}`);
+            addOutput('');
+          });
+          addOutput('💡 Use "article <number>" to read full article');
+        }
         break;
 
       case 'experience':
@@ -277,115 +196,106 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         addOutput('│                    WORK EXPERIENCE                          │');
         addOutput('└─────────────────────────────────────────────────────────────┘');
         addOutput('');
-        addOutput('🏢 Senior Fullstack Developer @ TechCorp Indonesia');
-        addOutput('   📅 Jan 2022 - Present');
-        addOutput('   • Led development of microservices architecture');
-        addOutput('   • Improved application performance by 40%');
-        addOutput('   • Mentored 3 junior developers');
-        addOutput('');
-        addOutput('🏢 Fullstack Developer @ StartupXYZ');
-        addOutput('   📅 Jun 2021 - Dec 2021');
-        addOutput('   • Built e-commerce platform from scratch');
-        addOutput('   • Implemented CI/CD pipelines');
-        addOutput('   • Reduced deployment time by 60%');
-        addOutput('');
-        addOutput('🏢 Frontend Developer @ WebStudio');
-        addOutput('   📅 Mar 2020 - May 2021');
-        addOutput('   • Developed responsive web applications');
-        addOutput('   • Collaborated with design team on UI/UX');
-        addOutput('   • Optimized frontend performance');
+        if (experiences.length === 0) {
+          addOutput('No experience entries yet.', 'info');
+        } else {
+          experiences.forEach((exp) => {
+            addOutput(`🏢 ${exp.title} @ ${exp.institution || 'Unknown'}`);
+            addOutput(`   📅 ${exp.period || 'N/A'}`);
+            if (exp.description) addOutput(`   • ${exp.description}`);
+            addOutput('');
+          });
+        }
         break;
 
       case 'about':
-        addOutput('=== About Ilham Ramadhan ===');
+        addOutput(`=== About ${profile?.display_name || 'Me'} ===`);
         addOutput('');
-        addOutput('Fullstack Developer with 3+ years of experience building');
-        addOutput('scalable web applications. Passionate about clean code,');
-        addOutput('modern technologies, and creating exceptional user experiences.');
-        addOutput('');
-        addOutput('Currently focused on:');
-        addOutput('• Building robust APIs and microservices');
-        addOutput('• Creating responsive, accessible frontends');
-        addOutput('• Implementing DevOps best practices');
-        addOutput('• Contributing to open-source projects');
+        if (profile?.detailed_bio) {
+          addOutput(profile.detailed_bio);
+        } else if (profile?.short_description) {
+          addOutput(profile.short_description);
+        } else {
+          addOutput('Fullstack Developer passionate about building');
+          addOutput('scalable web applications with modern technologies.');
+        }
         break;
 
       case 'projects':
-        if (args[0] === '--detailed' || args[0] === '--all') {
-          addOutput('┌─────────────────────────────────────────────────────────────┐');
-          addOutput('│                    ALL PROJECTS (DETAILED)                  │');
-          addOutput('└─────────────────────────────────────────────────────────────┘');
-          addOutput('');
-          projects.forEach((project, index) => {
-            addOutput(`${index + 1}. ${project.name} [${project.status}]`);
-            addOutput(`   🔧 Tech: ${project.tech}`);
-            addOutput(`   📝 ${project.description}`);
-            addOutput(`   🚀 Demo: ${project.demo}`);
-            addOutput(`   📂 Code: ${project.github}`);
-            addOutput(`   ✨ Key Features:`);
-            project.features.slice(0, 3).forEach(feature => {
-              addOutput(`      • ${feature}`);
-            });
-            addOutput('');
-          });
+        if (projects.length === 0) {
+          addOutput('No projects available yet.', 'info');
         } else {
           addOutput('┌─────────────────────────────────────────────────────────────┐');
-          addOutput('│                     RECENT PROJECTS                         │');
+          addOutput('│                     PORTFOLIO PROJECTS                      │');
           addOutput('└─────────────────────────────────────────────────────────────┘');
           addOutput('');
           projects.forEach((project, index) => {
-            addOutput(`${index + 1}. ${project.name} [${project.status}]`);
-            addOutput(`   🔧 ${project.tech}`);
-            addOutput(`   📝 ${project.description}`);
+            const featured = project.is_featured ? ' ⭐' : '';
+            addOutput(`${index + 1}. ${project.title}${featured}`);
+            addOutput(`   🔧 ${project.tech_stack?.join(', ') || 'N/A'}`);
+            addOutput(`   📝 ${project.short_description || 'No description'}`);
             addOutput('');
           });
           addOutput('💡 Use "project <number>" for detailed view');
-          addOutput('💡 Use "projects --detailed" for all details');
         }
         break;
 
       case 'skills':
         addOutput('=== Technical Skills ===');
         addOutput('');
-        skills.forEach(skill => {
-          addOutput(`• ${skill}`);
-        });
+        if (Object.keys(groupedSkills).length === 0) {
+          addOutput('No skills added yet.', 'info');
+        } else {
+          Object.entries(groupedSkills).forEach(([category, skills]) => {
+            addOutput(`• ${category}: ${skills.join(', ')}`);
+          });
+        }
         break;
 
       case 'contact':
+      case 'social':
         addOutput('=== Contact Information ===');
         addOutput('');
-        addOutput('📧 Email: ilham.ramadhan@example.com');
-        addOutput('🔗 LinkedIn: /in/ilham-ramadhan');
-        addOutput('🐙 GitHub: /ilham-ramadhan');
-        addOutput('🌐 Website: ilhamramadhan.dev');
-        addOutput('📱 Phone: +62 xxx xxxx xxxx');
+        if (socialLinks.email) addOutput(`📧 Email: ${socialLinks.email}`);
+        if (socialLinks.linkedin) addOutput(`🔗 LinkedIn: ${socialLinks.linkedin}`);
+        if (socialLinks.github) addOutput(`🐙 GitHub: ${socialLinks.github}`);
+        if (socialLinks.twitter) addOutput(`🐦 Twitter: ${socialLinks.twitter}`);
+        if (socialLinks.website) addOutput(`🌐 Website: ${socialLinks.website}`);
+        if (socialLinks.phone) addOutput(`📱 Phone: ${socialLinks.phone}`);
+        if (Object.keys(socialLinks).length === 0) {
+          addOutput('Contact information not configured yet.', 'info');
+        }
         break;
 
-      case 'ls':
+      case 'ls': {
         const listPath = args[0] ? normalizePath(currentPath || '/home/ilham', args[0]) : currentPath || '/home/ilham';
         const listDir = getCurrentDirectory(listPath);
-        
+
         if (listDir && typeof listDir === 'object') {
           const items = Object.keys(listDir).map(name => {
             const isDir = listDir[name] !== null;
             return isDir ? `${name}/` : name;
           });
-          addOutput(items.join('  '));
+          if (items.length === 0) {
+            addOutput('(empty directory)');
+          } else {
+            addOutput(items.join('  '));
+          }
         } else {
           addOutput(`ls: ${args[0] || '.'}: No such file or directory`, 'error');
         }
         break;
+      }
 
       case 'pwd':
         addOutput(currentPath || '/home/ilham');
         break;
-        
-      case 'cd':
+
+      case 'cd': {
         const targetPath = args[0] || '/home/ilham';
         const newPath = normalizePath(currentPath || '/home/ilham', targetPath);
         const targetDir = getCurrentDirectory(newPath);
-        
+
         if (targetDir !== null) {
           setCurrentPath(newPath);
           addOutput(`Changed directory to ${newPath}`);
@@ -393,9 +303,10 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
           addOutput(`cd: ${targetPath}: No such file or directory`, 'error');
         }
         break;
+      }
 
       case 'whoami':
-        addOutput('ilham');
+        addOutput(profile?.display_name?.toLowerCase().replace(/\s+/g, '.') || 'guest');
         break;
 
       case 'date':
@@ -406,132 +317,79 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         setLines([]);
         break;
 
-      case 'project':
+      case 'project': {
         const projectIndex = parseInt(args[0]) - 1;
-        if (projectIndex >= 0 && projectIndex < projects.length) {
-          const project = projects[projectIndex];
+        const project = projects[projectIndex] || projects.find(p =>
+          p.slug === args[0] || p.title.toLowerCase().includes(args[0])
+        );
+
+        if (project) {
           addOutput('┌─────────────────────────────────────────────────────────────┐');
-          addOutput(`│                    ${project.name.toUpperCase().padEnd(29)} │`);
+          addOutput(`│  ${project.title.toUpperCase().padEnd(55).slice(0, 55)} │`);
           addOutput('└─────────────────────────────────────────────────────────────┘');
           addOutput('');
-          addOutput(`📊 Status: ${project.status}`);
-          addOutput(`🔧 Tech Stack: ${project.tech}`);
-          addOutput(`📝 Description: ${project.description}`);
+          addOutput(`🔧 Tech Stack: ${project.tech_stack?.join(', ') || 'N/A'}`);
+          addOutput(`📝 Description: ${project.short_description || 'No description'}`);
           addOutput('');
-          addOutput('✨ Key Features:');
-          project.features.forEach(feature => {
-            addOutput(`   • ${feature}`);
-          });
-          addOutput('');
-          addOutput(`🎯 Challenges: ${project.challenges}`);
-          addOutput('');
-          addOutput(`🧠 What I Learned: ${project.learned}`);
-          addOutput('');
-          addOutput('🔗 Links:');
-          addOutput(`   📂 GitHub: ${project.github}`);
-          addOutput(`   🚀 Live Demo: ${project.demo}`);
-        } else if (args[0]) {
-          // Try to find by ID
-          const project = projects.find(p => p.id === args[0]);
-          if (project) {
-            addOutput('┌─────────────────────────────────────────────────────────────┐');
-            addOutput(`│                    ${project.name.toUpperCase().padEnd(29)} │`);
-            addOutput('└─────────────────────────────────────────────────────────────┘');
+          if (project.content) {
+            addOutput('📖 Details:');
+            addOutput(project.content);
             addOutput('');
-            addOutput(`📊 Status: ${project.status}`);
-            addOutput(`🔧 Tech Stack: ${project.tech}`);
-            addOutput(`📝 Description: ${project.description}`);
-            addOutput('');
-            addOutput('✨ Key Features:');
-            project.features.forEach(feature => {
-              addOutput(`   • ${feature}`);
-            });
-            addOutput('');
-            addOutput(`🎯 Challenges: ${project.challenges}`);
-            addOutput('');
-            addOutput(`🧠 What I Learned: ${project.learned}`);
-            addOutput('');
-            addOutput('🔗 Links:');
-            addOutput(`   📂 GitHub: ${project.github}`);
-            addOutput(`   🚀 Live Demo: ${project.demo}`);
-          } else {
-            addOutput('Project not found. Use "projects" to see available projects.', 'error');
           }
+          addOutput('🔗 Links:');
+          if (project.repo_url) addOutput(`   📂 GitHub: ${project.repo_url}`);
+          if (project.demo_url) addOutput(`   🚀 Live Demo: ${project.demo_url}`);
+        } else if (args[0]) {
+          addOutput('Project not found. Use "projects" to see available projects.', 'error');
         } else {
-          addOutput('Usage: project <number> or project <id>', 'error');
-          addOutput('Example: project 1 or project ecommerce-platform');
+          addOutput('Usage: project <number> or project <slug>', 'error');
         }
         break;
+      }
 
-      case 'article':
+      case 'article': {
         const articleIndex = parseInt(args[0]) - 1;
-        if (articleIndex >= 0 && articleIndex < articles.length) {
-          const article = articles[articleIndex];
+        const article = blogs[articleIndex] || blogs.find(b =>
+          b.slug === args[0] || b.title.toLowerCase().includes(args[0])
+        );
+
+        if (article) {
           addOutput('┌─────────────────────────────────────────────────────────────┐');
-          addOutput(`│                      ARTICLE PREVIEW                        │`);
+          addOutput(`│                      ARTICLE                                │`);
           addOutput('└─────────────────────────────────────────────────────────────┘');
           addOutput('');
           addOutput(`📰 ${article.title}`);
-          addOutput(`📅 Published: ${article.date} │ 📂 ${article.category} │ ⏱️ ${article.readTime}`);
+          addOutput(`📅 Published: ${article.published_at ? new Date(article.published_at).toLocaleDateString() : 'Draft'}`);
           addOutput('');
-          addOutput(`📝 Description:`);
-          addOutput(`   ${article.description}`);
-          addOutput('');
-          addOutput(`📖 Preview:`);
-          addOutput(`   ${article.preview}`);
-          addOutput('');
-          addOutput(`🏷️ Tags: ${article.tags.join(', ')}`);
-          addOutput('');
-          addOutput('💡 Full article available on my blog (contact for link)');
-        } else if (args[0]) {
-          // Try to find by ID
-          const article = articles.find(a => a.id === args[0]);
-          if (article) {
-            addOutput('┌─────────────────────────────────────────────────────────────┐');
-            addOutput(`│                      ARTICLE PREVIEW                        │`);
-            addOutput('└─────────────────────────────────────────────────────────────┘');
+          if (article.excerpt) {
+            addOutput('📝 Summary:');
+            addOutput(`   ${article.excerpt}`);
             addOutput('');
-            addOutput(`📰 ${article.title}`);
-            addOutput(`📅 Published: ${article.date} │ 📂 ${article.category} │ ⏱️ ${article.readTime}`);
-            addOutput('');
-            addOutput(`📝 Description:`);
-            addOutput(`   ${article.description}`);
-            addOutput('');
-            addOutput(`📖 Preview:`);
-            addOutput(`   ${article.preview}`);
-            addOutput('');
-            addOutput(`🏷️ Tags: ${article.tags.join(', ')}`);
-            addOutput('');
-            addOutput('💡 Full article available on my blog (contact for link)');
-          } else {
-            addOutput('Article not found. Use "articles" to see available articles.', 'error');
           }
+          if (article.content) {
+            addOutput('📖 Content:');
+            addOutput(article.content.slice(0, 500) + (article.content.length > 500 ? '...' : ''));
+          }
+          if (article.tags?.length) addOutput(`\n🏷️ Tags: ${article.tags.join(', ')}`);
+        } else if (args[0]) {
+          addOutput('Article not found. Use "articles" to see available articles.', 'error');
         } else {
-          addOutput('Usage: article <number> or article <id>', 'error');
-          addOutput('Example: article 1 or article microservices-architecture');
+          addOutput('Usage: article <number> or article <slug>', 'error');
         }
         break;
+      }
 
       case 'cat':
         if (args[0] === 'about.md') {
-          addOutput('=== About Ilham Ramadhan ===');
+          addOutput(`=== About ${profile?.display_name || 'Me'} ===`);
           addOutput('');
-          addOutput('Fullstack Developer with 3+ years of experience building');
-          addOutput('scalable web applications. Passionate about clean code,');
-          addOutput('modern technologies, and creating exceptional user experiences.');
+          addOutput(profile?.detailed_bio || profile?.short_description || 'No bio available.');
         } else if (args[0] === 'contact.txt') {
-          addOutput('📧 ilham.ramadhan@example.com');
-          addOutput('🔗 linkedin.com/in/ilham-ramadhan');
-          addOutput('🐙 github.com/ilham-ramadhan');
-          addOutput('🌐 ilhamramadhan.dev');
+          Object.entries(socialLinks).forEach(([key, value]) => {
+            if (value) addOutput(`${key}: ${value}`);
+          });
         } else if (args[0] === 'skills.json') {
-          addOutput('{');
-          addOutput('  "frontend": ["React", "Vue.js", "Angular", "TypeScript"],');
-          addOutput('  "backend": ["Node.js", "Python", "Java", "Express"],');
-          addOutput('  "database": ["PostgreSQL", "MongoDB", "Redis"],');
-          addOutput('  "cloud": ["AWS", "Docker", "Kubernetes"],');
-          addOutput('  "tools": ["Git", "Jest", "Cypress", "Figma"]');
-          addOutput('}');
+          addOutput(JSON.stringify(groupedSkills, null, 2));
         } else {
           addOutput(`cat: ${args[0]}: No such file`, 'error');
         }
@@ -542,10 +400,10 @@ export const useTerminalCommands = ({ setLines, setCurrentPath }: UseTerminalCom
         addOutput('Type "help" to see available commands.');
         break;
     }
-  }, [setLines, addOutput, setCurrentPath, getCurrentDirectory, normalizePath]);
+  }, [setLines, addOutput, setCurrentPath, getCurrentDirectory, normalizePath, projects, blogs, experiences, groupedSkills, profile, socialLinks]);
 
   const getAvailableCommands = useCallback(() => {
-    return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'contact', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'cd', 'whoami', 'date'];
+    return ['help', 'about', 'projects', 'project', 'articles', 'article', 'skills', 'experience', 'contact', 'social', 'ascii', 'tree', 'cat', 'clear', 'ls', 'pwd', 'cd', 'whoami', 'date'];
   }, []);
 
   return {

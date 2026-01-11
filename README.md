@@ -1,73 +1,254 @@
-# Welcome to your Lovable project
+# Nexus Portfolio CMS
 
-## Project info
+A terminal-style portfolio website with integrated CMS for managing content. Built with React, TypeScript, Tailwind CSS, and Supabase.
 
-**URL**: https://lovable.dev/projects/b2bcc8d2-71e7-44a0-9584-4279f8f0115c
+## ✨ Features
 
-## How can I edit this code?
+- **Interactive Terminal UI** - Unique terminal-style portfolio with functional commands
+- **Admin CMS** - Full CRUD operations for all portfolio content
+- **Authentication** - Email/password, Google, and GitHub OAuth
+- **Role-Based Access** - Restrict CMS access to specific email addresses
+- **Real-time Data** - Portfolio data fetched from Supabase database
+- **Responsive Design** - Works on desktop and mobile devices
+- **Vercel Deployment** - Optimized for Vercel hosting
 
-There are several ways of editing your application.
+## 🛠️ Tech Stack
 
-**Use Lovable**
+- **Frontend**: React 18, TypeScript, Tailwind CSS
+- **UI Components**: shadcn/ui, Radix UI
+- **State Management**: TanStack Query
+- **Routing**: React Router DOM
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **Build Tool**: Vite
+- **Deployment**: Vercel
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b2bcc8d2-71e7-44a0-9584-4279f8f0115c) and start prompting.
+## 📋 Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js 18+ and npm
+- A Supabase account and project
+- (Optional) Vercel account for deployment
 
-**Use your preferred IDE**
+## 🚀 Quick Start
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 1. Clone the Repository
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+git clone https://github.com/yourusername/nexus.ilramdhan.dev.git
+cd nexus.ilramdhan.dev
+```
 
-Follow these steps:
+### 2. Install Dependencies
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```bash
+npm install
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 3. Configure Environment Variables
 
-# Step 3: Install the necessary dependencies.
-npm i
+Copy the example environment file and fill in your values:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your Supabase credentials:
+
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_ALLOWED_ADMIN_EMAILS=youremail@gmail.com,another@email.com
+VITE_SITE_URL=https://yourdomain.com
+VITE_SITE_NAME=Your Portfolio Name
+```
+
+### 4. Run Database Migrations
+
+Run the SQL migrations in your Supabase dashboard:
+
+1. Go to your Supabase project dashboard
+2. Navigate to **SQL Editor**
+3. Execute the migration files in order:
+   - `supabase/migrations/001_initial_schema.sql`
+   - `supabase/migrations/002_storage_policies.sql`
+
+### 5. Create Storage Bucket
+
+In Supabase dashboard:
+
+1. Navigate to **Storage**
+2. Create a new bucket named `ilramdhan.dev`
+3. Set it to **Public** for public file access
+
+### 6. Run the Seeder (Optional)
+
+After creating your admin account, you can populate test data:
+
+1. Sign up through the CMS (`/admin/login`)
+2. Get your User ID from Supabase dashboard: **Authentication** → **Users**
+3. Open `supabase/seed.sql`, replace all `YOUR_USER_UUID` with your actual UUID
+4. Run the SQL in Supabase SQL Editor
+
+### 7. Start Development Server
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open [http://localhost:8080](http://localhost:8080) to view the portfolio.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🔐 Setting Up Authentication
 
-**Use GitHub Codespaces**
+### Enable OAuth Providers
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+In your Supabase dashboard:
 
-## What technologies are used for this project?
+1. Go to **Authentication** → **Providers**
+2. Enable **Google**:
+   - Get OAuth credentials from [Google Cloud Console](https://console.cloud.google.com/)
+   - Add authorized redirect URI: `https://your-project-ref.supabase.co/auth/v1/callback`
+   - Enter Client ID and Client Secret in Supabase
+3. Enable **GitHub**:
+   - Create OAuth app in [GitHub Developer Settings](https://github.com/settings/developers)
+   - Add callback URL: `https://your-project-ref.supabase.co/auth/v1/callback`
+   - Enter Client ID and Client Secret in Supabase
 
-This project is built with:
+### Configure Redirect URLs
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+In Supabase **Authentication** → **URL Configuration**:
 
-## How can I deploy this project?
+- Site URL: `https://yourdomain.com`
+- Redirect URLs: Add `https://yourdomain.com/admin/callback`
 
-Simply open [Lovable](https://lovable.dev/projects/b2bcc8d2-71e7-44a0-9584-4279f8f0115c) and click on Share -> Publish.
+For local development, also add:
+- `http://localhost:8080/admin/callback`
 
-## Can I connect a custom domain to my Lovable project?
+### Restrict Admin Access
 
-Yes, you can!
+Set allowed admin emails in your `.env`:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```env
+VITE_ALLOWED_ADMIN_EMAILS=your.email@gmail.com,github-email@users.noreply.github.com
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Only these emails can access the CMS. Leave empty to allow all authenticated users.
+
+## 📂 Project Structure
+
+```
+nexus.ilramdhan.dev/
+├── public/                 # Static assets
+│   ├── favicon.svg        # Terminal-themed favicon
+│   └── robots.txt
+├── src/
+│   ├── components/        # React components
+│   │   ├── admin/        # Admin panel components
+│   │   └── ui/           # shadcn/ui components
+│   ├── contexts/         # React contexts (Auth)
+│   ├── hooks/            # Custom hooks
+│   ├── integrations/     # Supabase client
+│   ├── pages/            # Page components
+│   │   └── admin/        # CMS pages
+│   ├── types/            # TypeScript types
+│   ├── App.tsx           # Main app with routing
+│   └── main.tsx          # Entry point
+├── supabase/
+│   ├── migrations/       # SQL migrations
+│   └── seed.sql          # Seed data
+├── .env.example          # Environment template
+├── vercel.json           # Vercel config
+└── README.md
+```
+
+## 🖥️ Terminal Commands
+
+The portfolio terminal supports these commands:
+
+| Command | Description |
+|---------|-------------|
+| `help` | Show all available commands |
+| `about` | Display bio/about information |
+| `projects` | List all portfolio projects |
+| `project <n>` | Show detailed project info |
+| `articles` | List published blog posts |
+| `article <n>` | Read specific article |
+| `skills` | Display tech stack by category |
+| `experience` | Show work experience |
+| `contact` | Display contact information |
+| `social` | Show social media links |
+| `ascii` | Display ASCII art logo |
+| `tree` | Show file structure |
+| `ls` | List directory contents |
+| `cd <dir>` | Change directory |
+| `pwd` | Print working directory |
+| `whoami` | Display current user |
+| `date` | Show current date/time |
+| `clear` | Clear terminal screen |
+
+## 🌐 Deployment on Vercel
+
+### Automatic Deployment
+
+1. Push your code to GitHub
+2. Connect repository to Vercel
+3. Add environment variables in Vercel dashboard
+4. Deploy
+
+### Environment Variables in Vercel
+
+Add these in Vercel project settings:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_ALLOWED_ADMIN_EMAILS`
+- `VITE_SITE_URL`
+- `VITE_SITE_NAME`
+
+### Build Settings
+
+Vercel should auto-detect these settings:
+- **Framework**: Vite
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+
+## 📝 CMS Usage
+
+Access the CMS at `/admin`:
+
+1. **Dashboard** - Overview of all content counts
+2. **Projects** - Manage portfolio projects
+3. **Blogs** - Write and publish articles
+4. **Resume** - Add work experience and education
+5. **Services** - List services you offer
+6. **Certificates** - Showcase certifications
+7. **Tech Stack** - Manage skills by category
+8. **Messages** - View contact form submissions
+9. **Settings** - Profile and site configuration
+
+## 🔧 Development
+
+```bash
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Run linter
+npm run lint
+```
+
+## 📄 License
+
+MIT License - feel free to use this project for your own portfolio!
+
+## 🤝 Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+---
+
+Built with ❤️ by [Ilham Ramadhan](https://ilramdhan.dev)
